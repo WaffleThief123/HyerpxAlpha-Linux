@@ -1,12 +1,14 @@
 #ifndef __ALPHA_W_H
 #define __ALPHA_W_H
 
-#include <cstring>
 #include <hidapi/hidapi.h>
-#include <iostream>
 #include <libudev.h>
-#include <stdexcept>
 #include <wchar.h>
+
+#include <cstring>
+#include <iostream>
+#include <memory>
+#include <stdexcept>
 
 #define VENDOR_ID 0x03f0
 #define PRODUCT_ID 0x098d
@@ -34,7 +36,7 @@ enum class commands : int {
 };
 
 class headset {
-public:
+ public:
   headset() {
     if (hid_init() < 0) {
       throw std::runtime_error("Failed to initialize HIDAPI");
@@ -42,13 +44,10 @@ public:
     std::cout << "HIDAPI version:" << hid_version_str() << std::endl;
   }
 
-  ~headset() {
-    hid_close(handle);
-    hid_exit();
-  }
+  ~headset() { hid_exit(); }
 
-  void read(unsigned char *buffer) {
-    hid_read_timeout(handle, buffer, 32, 1000);
+  void read(unsigned char* buffer) {
+    hid_read_timeout(handle.get(), buffer, 32, 1000);
   }
 
   void send_command(commands cmd) {
@@ -57,19 +56,19 @@ public:
     bytes[1] = ((long)cmd >> 16) & 0xff;
     bytes[2] = ((long)cmd >> 8) & 0xff;
     bytes[3] = (long)cmd & 0xff;
-    hid_write(handle, bytes, 4);
+    hid_write(handle.get(), bytes, 4);
   }
 
   bool init() {
-    handle = hid_open(VENDOR_ID, PRODUCT_ID, NULL);
-    if (handle == NULL) {
+    handle.reset(hid_open(VENDOR_ID, PRODUCT_ID, NULL));
+    if (!handle) {
       return false;
     }
     int res = 0;
     wchar_t man[MAX_STR], prod[MAX_STR], ser[MAX_STR];
-    res += hid_get_manufacturer_string(handle, man, MAX_STR);
-    res += hid_get_product_string(handle, prod, MAX_STR);
-    res += hid_get_serial_number_string(handle, ser, MAX_STR);
+    res += hid_get_manufacturer_string(handle.get(), man, MAX_STR);
+    res += hid_get_product_string(handle.get(), prod, MAX_STR);
+    res += hid_get_serial_number_string(handle.get(), ser, MAX_STR);
     if (res < 0) {
       throw std::runtime_error("Unable to read device strings");
     }
@@ -86,10 +85,10 @@ public:
   std::wstring print_product() { return product; }
   std::wstring print_serial() { return serial; }
 
-private:
+ private:
   std::wstring manufacturer;
   std::wstring product;
   std::wstring serial;
-  hid_device *handle;
+  std::unique_ptr<hid_device, decltype(&hid_close)> handle{nullptr, &hid_close};
 };
 #endif

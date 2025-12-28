@@ -1,18 +1,18 @@
 #include "dialog.h"
+
 #include <wx/event.h>
 
-dialog::dialog(const wxChar *title, const wxPoint &pos, const wxSize &size,
-               const wxChar *staticImg)
+dialog::dialog(const wxChar* title, const wxPoint& pos, const wxSize& size,
+               const wxChar* staticImg)
     : wxDialog(NULL, -1, title, pos, size),
       logo(wxImage(staticImg, wxBITMAP_TYPE_PNG)) {
-
-  dialogTimer = new wxTimer();
+  dialogTimer = std::make_unique<wxTimer>();
   dialogTimer->Bind(wxEVT_TIMER,
-                    [this](wxTimerEvent &event) { this->Destroy(); });
+                    [this](wxTimerEvent& event) { this->Destroy(); });
   dialogTimer->Start(3000, true);
 
   this->Bind(wxEVT_CLOSE_WINDOW,
-             [this](wxCloseEvent &event) { this->Destroy(); });
+             [this](wxCloseEvent& event) { this->Destroy(); });
   dialogSizer = new wxBoxSizer(wxVERTICAL);
   dialogPanel = new wxPanel(this, wxID_ANY);
 

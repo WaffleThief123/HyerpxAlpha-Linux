@@ -3,18 +3,20 @@
 
 #include <wx/wx.h>
 
+#include <memory>
+
 class dialog : public wxDialog {
-public:
-  dialog(const wxChar *title, const wxPoint &pos, const wxSize &size,
-         const wxChar *staticImg);
+ public:
+  dialog(const wxChar* title, const wxPoint& pos, const wxSize& size,
+         const wxChar* staticImg);
 
   virtual ~dialog();
 
-private:
-  wxPanel *dialogPanel;
-  wxStaticBitmap *dialogLogo;
-  wxBoxSizer *dialogSizer;
-  wxTimer *dialogTimer;
+ private:
+  wxPanel* dialogPanel;
+  wxStaticBitmap* dialogLogo;
+  wxBoxSizer* dialogSizer;
+  std::unique_ptr<wxTimer> dialogTimer;
   wxBitmapBundle logo;
 };
 
