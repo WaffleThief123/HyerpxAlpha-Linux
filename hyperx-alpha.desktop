@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=HyperX Cloud Alpha
+Comment=HyperX Cloud Alpha Wireless headset manager
+Exec=/opt/hyperx/Hyperx --systray
+Icon=/opt/hyperx/img/hyperx.png
+Terminal=false
+Categories=Audio;HardwareSettings;
+StartupNotify=false
+X-GNOME-Autostart-enabled=true

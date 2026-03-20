@@ -1,5 +1,8 @@
 #include "hyperxFrame.h"
 
+#include <sys/stat.h>
+#include <wx/stdpaths.h>
+
 #include "dialog.h"
 #include "hyperxApp.h"
 
@@ -33,6 +36,10 @@ hyperxFrame::hyperxFrame(const wxChar* title, const wxPoint& pos,
   }
 
   createFrame();
+
+  wxString configDir = wxStandardPaths::Get().GetUserConfigDir() + "/hyperx";
+  mkdir(configDir.mb_str(), 0755);
+  m_configPath = configDir + "/config";
 
   m_headset->send_command(commands::CONNECTION_STATE);
 }
@@ -74,12 +81,16 @@ void hyperxFrame::micSwitch(wxCommandEvent& event) {
   (micMonitor->GetValue())
       ? m_headset->send_command(commands::MICROPHONE_MONITOR)
       : m_headset->send_command(commands::MICROPHONE_MONITOR_OFF);
+  mic_monitor = micMonitor->GetValue();
+  saveSettings();
 }
 
 void hyperxFrame::voiceSwitch(wxCommandEvent& event) {
   (voicePrompt->GetValue())
       ? m_headset->send_command(commands::VOICE_PROMPTS)
       : m_headset->send_command(commands::VOICE_PROMPTS_OFF);
+  voice = voicePrompt->GetValue();
+  saveSettings();
 }
 
 void hyperxFrame::quit(wxCommandEvent& event) {
@@ -109,6 +120,7 @@ void hyperxFrame::sleepChoice(wxCommandEvent& event) {
     default:
       break;
   }
+  saveSettings();
 }
 
 void hyperxFrame::setTaskIcon() {
@@ -228,13 +240,13 @@ void hyperxFrame::createFrame() {
 
 void hyperxFrame::onConnect() {
   m_headset->send_command(commands::STATUS_REQUEST);
-  m_headset->send_command(commands::SLEEP_STATE);
   status = connection_status::CONNECTED;
   connectedLabel->SetLabel(_T("Connected"));
   sleepTimer->Enable();
   voicePrompt->Enable();
   micMonitor->Enable();
   setTaskIcon();
+  loadAndApplySettings();
   timer->Start(30000);
 }
 
@@ -369,4 +381,64 @@ void hyperxFrame::read_loop() {
       }
     });
   }
+}
+
+void hyperxFrame::saveSettings() {
+  std::ofstream file(m_configPath.mb_str());
+  if (file.is_open()) {
+    file << "sleep_timer=" << sleepTimer->GetSelection() << "\n";
+    file << "voice_prompts=" << (voice ? 1 : 0) << "\n";
+    file << "mic_monitor=" << (mic_monitor ? 1 : 0) << "\n";
+  }
+}
+
+void hyperxFrame::loadAndApplySettings() {
+  std::ifstream file(m_configPath.mb_str());
+  if (!file.is_open())
+    return;
+
+  std::string line;
+  int sleepVal = -1;
+  int voiceVal = -1;
+  int micVal = -1;
+
+  while (std::getline(file, line)) {
+    auto pos = line.find('=');
+    if (pos == std::string::npos)
+      continue;
+    std::string key = line.substr(0, pos);
+    int val = std::stoi(line.substr(pos + 1));
+
+    if (key == "sleep_timer")
+      sleepVal = val;
+    else if (key == "voice_prompts")
+      voiceVal = val;
+    else if (key == "mic_monitor")
+      micVal = val;
+  }
+
+  if (sleepVal >= 0 && sleepVal <= 2) {
+    sleepTimer->SetSelection(sleepVal);
+    switch (sleepVal) {
+      case 0:
+        m_headset->send_command(commands::SLEEP_TIMER_10);
+        break;
+      case 1:
+        m_headset->send_command(commands::SLEEP_TIMER_20);
+        break;
+      case 2:
+        m_headset->send_command(commands::SLEEP_TIMER_30);
+        break;
+    }
+  }
+
+  if (voiceVal == 1)
+    m_headset->send_command(commands::VOICE_PROMPTS);
+  else if (voiceVal == 0)
+    m_headset->send_command(commands::VOICE_PROMPTS_OFF);
+
+  if (micVal == 1)
+    m_headset->send_command(commands::MICROPHONE_MONITOR);
+  else if (micVal == 0)
+    m_headset->send_command(commands::MICROPHONE_MONITOR_OFF);
 }

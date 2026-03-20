@@ -5,6 +5,7 @@
 #include <wx/wx.h>
 
 #include <atomic>
+#include <fstream>
 #include <memory>
 #include <thread>
 
@@ -71,5 +72,10 @@ class hyperxFrame : public wxFrame {
   std::atomic<bool> running;
   std::thread t;
   void read_loop();
+
+  // settings persistence
+  wxString m_configPath;
+  void saveSettings();
+  void loadAndApplySettings();
 };
 #endif
