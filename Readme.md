@@ -1,85 +1,80 @@
-05/12/2025:
-
-- fixed issue with sleep timer not working
-- legacy systray only supported, disabled systray when unavailable
-
-Todo:
-
-- build release version
-- open to suggestions or pull request
-- also if anyone wants to add different icons for systray, I will embed them in release version(as long as they are my bad ones I won't bother)
-
 # HyerpxAlpha
 
-Linux software for the Hyperx Alpha Wireless.
-
-This is Extremely Alpha, it is hap hazardly being maintained.
-
-Not my main git, Sorry if I don't respond in a timely fashion.
+Linux software for the HyperX Cloud Alpha Wireless headset.
 
 ![HyerpxAlpha](assets/Hyperx.png)
 
-Settings persist while not running so can be edited and then closed.
+## Features
 
-## Description
-
-A simple application to provite the missing features on linux
-
-- Battery Monitoring
-- Sleep Timer
-- Mic Monitor
-- Voice Control
+- Battery monitoring (percentage and estimated hours remaining)
+- Sleep timer (10, 20, or 30 minutes)
+- Microphone monitor (sidetone)
+- Voice prompts toggle
+- System tray support with battery level icons
+- Settings persist across restarts
 
 ## Dependencies
 
-- wxWidgets
+- wxWidgets 3.2+
 - hidapi
-On ubuntu:
+
+**Arch Linux:**
 ```
-sudo apt update && sudo apt upgrade -y
+sudo pacman -S wxwidgets-gtk3 hidapi
+```
+
+**Ubuntu/Debian:**
+```
 sudo apt install libwxgtk3.2-dev wx3.2-headers libhidapi-dev libhidapi-libusb0 libhidapi-hidraw0
+```
+
+## Building
+
+```
+git clone https://github.com/WaffleThief123/HyerpxAlpha-Linux
+cd HyerpxAlpha-Linux
+cmake -S . -B build
+cmake --build build
 ```
 
 ## Installation
 
-To install HyerpxAlpha, follow these steps:
-
-1. Clone the repository:
-   ```
-   git clone https://github.com/IllicitFrog/HyerpxAlpha.git
-   ```
-2. Navigate to the project directory:
-   ```
-   cd HyerpxAlpha
-   ```
-3. Build the project using CMake:
-
-   ```
-   cmake -S . -B build
-   cmake --build build
-   ```
-
-## Usage
-
-**Permissions are required to access the Hyperx device.**
-
-Editing /etc/udev/rules.d/50-hidraw.rules with:
+An install script is included that sets up the binary, udev rules, and autostart entry:
 
 ```
-SUBSYSTEMS=="usb", ATTRS{idVendor}=="03f0", MODE="0660", GROUP="plugdev", TAG+="uaccess"
+./install.sh
 ```
 
-After installation, you can run the HyerpxAlpha software with the following command:
+This will:
+- Copy the binary and icons to `/opt/hyperx/`
+- Install udev rules for non-root device access
+- Add a desktop entry to your applications menu
+- Set up autostart so the tray app launches at login
 
+After installing, unplug and replug your headset dongle for the udev rules to take effect.
+
+### Manual Setup
+
+If you prefer to set things up yourself:
+
+**udev rules** (required for non-root access):
 ```
-bin/Hyerpx
+sudo cp 99-hyperx.rules /etc/udev/rules.d/
+sudo udevadm control --reload-rules
+sudo udevadm trigger
 ```
 
-or add --systray to start in tray(only works with legacy systray)
+**Run directly:**
+```
+bin/Hyperx
+```
 
+**Run as a system tray app:**
 ```
 bin/Hyperx --systray
 ```
+
+Note: System tray mode requires legacy tray support (e.g., the system tray in KDE, XFCE, or a tray applet on GNOME).
 
 ## Contributing
 
