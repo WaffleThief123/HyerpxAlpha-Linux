@@ -1,0 +1,41 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential libwxgtk3.2-dev libhidapi-dev
+
+      - name: Configure
+        run: cmake -S . -B build
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Package release
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          mkdir -p "hyperx-alpha-${VERSION}/img"
+          cp bin/Hyperx "hyperx-alpha-${VERSION}/"
+          cp bin/img/*.png "hyperx-alpha-${VERSION}/img/"
+          cp 99-hyperx.rules hyperx-alpha.desktop install.sh "hyperx-alpha-${VERSION}/"
+          tar czf "hyperx-alpha-${VERSION}-linux-x86_64.tar.gz" "hyperx-alpha-${VERSION}"
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: hyperx-alpha-*-linux-x86_64.tar.gz
