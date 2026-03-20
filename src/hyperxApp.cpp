@@ -5,7 +5,7 @@
 #include "hyperxFrame.h"
 
 // App
-hyperxApp::hyperxApp(bool systray) : systray(systray) {}
+hyperxApp::hyperxApp(bool systray, bool debug) : systray(systray), debug(debug) {}
 hyperxApp::~hyperxApp() {}
 
 bool hyperxApp::OnInit() {
@@ -16,7 +16,7 @@ bool hyperxApp::OnInit() {
   c.erase(c.end() - 6, c.end());
   try {
     m_frame = new hyperxFrame(_T("HyperX Alpha"), wxDefaultPosition,
-                              wxSize(200, 400), c, this, systray);
+                              wxSize(200, 400), c, this, systray, debug);
   } catch (std::exception& e) {
     std::cout << e.what() << std::endl;
     return false;

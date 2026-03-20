@@ -8,13 +8,14 @@
 
 hyperxFrame::hyperxFrame(const wxChar* title, const wxPoint& pos,
                          const wxSize& size, const wxChar* runDir, wxApp* app,
-                         bool useTray)
+                         bool useTray, bool debug)
     : wxFrame(nullptr, wxID_ANY, title, pos, size),
       m_headset(std::make_unique<headset>()),
       m_runDir(runDir),
       running(true),
       app(app),
-      useTray(useTray) {
+      useTray(useTray),
+      debug(debug) {
   if (!m_headset->init()) {
     dialog* error =
         new dialog(_T("HyperX Cloud Alpha Unavailable"), wxDefaultPosition,
@@ -37,7 +38,9 @@ hyperxFrame::hyperxFrame(const wxChar* title, const wxPoint& pos,
 
   createFrame();
 
-  wxString configDir = wxStandardPaths::Get().GetUserConfigDir() + "/hyperx";
+  const char* xdgConfig = getenv("XDG_CONFIG_HOME");
+  wxString configDir = xdgConfig ? wxString(xdgConfig) + "/hyperx"
+                                 : wxString(wxGetHomeDir() + "/.config/hyperx");
   mkdir(configDir.mb_str(), 0755);
   m_configPath = configDir + "/config";
 
@@ -205,6 +208,9 @@ void hyperxFrame::createFrame() {
   micMonitor->Bind(wxEVT_SWITCH, &hyperxFrame::micSwitch, this);
   micMonitor->Disable();
 
+  // mic mute status
+  micMuteLabel = new wxStaticText(panel, wxID_ANY, _T("Mic: --"));
+
   // add to feature box
   featureBox->Add(sleepTimerLabel, 0, wxEXPAND | wxALL, margin);
   featureBox->Add(sleepTimer, 0, wxEXPAND | wxALL, margin);
@@ -212,6 +218,7 @@ void hyperxFrame::createFrame() {
   featureBox->Add(voicePrompt, 0, wxALIGN_RIGHT | wxALL, margin);
   featureBox->Add(micMonitorLabel, 0, wxALIGN_RIGHT | wxALL, margin);
   featureBox->Add(micMonitor, 0, wxALIGN_RIGHT | wxALL, margin);
+  featureBox->Add(micMuteLabel, 0, wxEXPAND | wxALL, margin);
 
   auto buttonBox = new wxBoxSizer(wxVERTICAL);
   quitButton = new wxButton(panel, wxID_EXIT, _T("Quit"));
@@ -239,23 +246,38 @@ void hyperxFrame::createFrame() {
 }
 
 void hyperxFrame::onConnect() {
-  m_headset->send_command(commands::STATUS_REQUEST);
+  if (status == connection_status::CONNECTED)
+    return;
   status = connection_status::CONNECTED;
   connectedLabel->SetLabel(_T("Connected"));
+  micMuteLabel->SetLabel(_T("Mic: Active"));
   sleepTimer->Enable();
   voicePrompt->Enable();
   micMonitor->Enable();
+  m_headset->send_command(commands::STATUS_REQUEST);
   setTaskIcon();
-  loadAndApplySettings();
+
+  // Delay applying saved settings to give the headset time to initialize
+  auto settingsTimer = new wxTimer();
+  settingsTimer->Bind(wxEVT_TIMER, [this, settingsTimer](wxTimerEvent&) {
+    loadAndApplySettings();
+    settingsTimer->Stop();
+    delete settingsTimer;
+  });
+  settingsTimer->StartOnce(2000);
+
   timer->Start(30000);
 }
 
 void hyperxFrame::onDisconnect() {
+  if (status == connection_status::DISCONNECTED)
+    return;
   status = connection_status::DISCONNECTED;
   connectedLabel->SetLabel(_T("Disconnected"));
   sleepTimer->Disable();
   voicePrompt->Disable();
   micMonitor->Disable();
+  micMuteLabel->SetLabel(_T("Mic: --"));
   setTaskIcon();
   timer->Stop();
 }
@@ -266,6 +288,12 @@ void hyperxFrame::read_loop() {
     m_headset->read(buffer);
     app->CallAfter([this, &buffer]() {
       if (buffer[0] == 0x21 && buffer[1] == 0xbb) {
+        if (debug) {
+          printf("HID: %02x %02x %02x %02x %02x %02x %02x %02x\n",
+                 buffer[0], buffer[1], buffer[2], buffer[3],
+                 buffer[4], buffer[5], buffer[6], buffer[7]);
+          fflush(stdout);
+        }
         switch (buffer[2]) {
           case 0x03:
             if (buffer[3] == 0x01) {
@@ -275,7 +303,7 @@ void hyperxFrame::read_loop() {
             }
             break;
 
-          // STILL DONT KNOW
+          // Microphone state (polled, unreliable for mute status)
           case 0x05:
             break;
 
@@ -308,20 +336,37 @@ void hyperxFrame::read_loop() {
             }
             break;
 
-          // STILL DONT KNOW
+          // Mic monitor state query response
           case 0x0a:
+            if (buffer[3] == 0x00) {
+              mic_monitor = false;
+              micMonitor->SetValue(false);
+            } else if (buffer[3] == 0x01) {
+              mic_monitor = true;
+              micMonitor->SetValue(true);
+            }
             break;
 
-          // Battery Check
+          // Battery level
           case 0x0b:
             battery = (unsigned int)buffer[3];
-            connectedLabel->SetLabel("Battery: " + std::to_string(battery) +
-                                     "% ");
+            connectedLabel->SetLabel(
+                "Battery: " + std::to_string(battery) + "%" +
+                (charging ? " (Charging)" : ""));
             setTaskIcon();
             break;
 
-          // PING IM GUESSING?
+          // Sidetone level response (read-only)
+          case 0x11:
+            break;
+
+          // Ping / charging status
           case 0x0c:
+            if (buffer[3] == 0x01) {
+              charging = true;
+            } else {
+              charging = false;
+            }
             break;
 
           case 0x0d:
@@ -357,7 +402,17 @@ void hyperxFrame::read_loop() {
             }
             break;
 
-          // MICMONIITOR RESPONSE
+          // Mic connected/disconnected (physical)
+          case 0x20:
+            if (buffer[3] == 0x00) {
+              micMuteLabel->SetLabel(_T("Mic: Disconnected"));
+            } else if (buffer[3] == 0x01) {
+              micMuteLabel->SetLabel(_T("Mic: Active"));
+              m_headset->send_command(commands::MICROPHONE_STATE);
+            }
+            break;
+
+          // Mic monitor response
           case 0x22:
             if (buffer[3] == 0x00) {
               mic_monitor = false;
@@ -368,10 +423,20 @@ void hyperxFrame::read_loop() {
             }
             break;
 
+          // Mic mute status (real-time from physical button)
+          case 0x23:
+            if (buffer[3] == 0x00) {
+              micMuted = false;
+              micMuteLabel->SetLabel(_T("Mic: Active"));
+            } else if (buffer[3] == 0x01) {
+              micMuted = true;
+              micMuteLabel->SetLabel(_T("Mic: Muted"));
+            }
+            break;
+
           // POWER OFF
           case 0x24:
             if (buffer[3] == 0x01) {
-              status = connection_status::DISCONNECTED;
               onDisconnect();
             } else if (buffer[3] == 0x02) {
               onConnect();

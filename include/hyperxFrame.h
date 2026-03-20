@@ -16,11 +16,13 @@
 class hyperxFrame : public wxFrame {
  public:
   hyperxFrame(const wxChar* title, const wxPoint& pos, const wxSize& size,
-              const wxChar* runDir, wxApp* app, bool useTray = false);
+              const wxChar* runDir, wxApp* app, bool useTray = false,
+              bool debug = false);
 
  private:
   wxApp* app;
   bool useTray = false;
+  bool debug = false;
   // Main layout
   std::unique_ptr<wxTaskBarIcon> taskBarIcon;
   bool taskAvailable = false;
@@ -38,14 +40,15 @@ class hyperxFrame : public wxFrame {
   wxSwitchCtrl* voicePrompt;
   wxStaticText* micMonitorLabel;
   wxSwitchCtrl* micMonitor;
+  wxStaticText* micMuteLabel;
 
   // headset data
   std::unique_ptr<headset> m_headset;
   sleep_time sleep;
   connection_status status;
   unsigned int battery;
-  bool micMuted;
-  bool muted;
+  bool micMuted = false;
+  bool charging = false;
   bool voice;
   bool mic_monitor;
   unsigned long identifier;
@@ -60,9 +63,9 @@ class hyperxFrame : public wxFrame {
   void showWindow(wxTaskBarIconEvent&);
   void showMenu(wxTaskBarIconEvent&);
   void sleepChoice(wxCommandEvent&);
-  void voiceSwitch(wxCommandEvent&);  // hide button
-  void micSwitch(wxCommandEvent&);    // hide button
-  void quit(wxCommandEvent&);         // quit button
+  void voiceSwitch(wxCommandEvent&);
+  void micSwitch(wxCommandEvent&);
+  void quit(wxCommandEvent&);
 
   // timer Event 5 seconds
   std::unique_ptr<wxTimer> timer;

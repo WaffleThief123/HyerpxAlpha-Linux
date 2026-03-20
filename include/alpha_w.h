@@ -51,12 +51,12 @@ class headset {
   }
 
   void send_command(commands cmd) {
-    unsigned char bytes[4];
+    unsigned char bytes[31] = {};
     bytes[0] = ((long)cmd >> 24) & 0xff;
     bytes[1] = ((long)cmd >> 16) & 0xff;
     bytes[2] = ((long)cmd >> 8) & 0xff;
     bytes[3] = (long)cmd & 0xff;
-    hid_write(handle.get(), bytes, 4);
+    hid_write(handle.get(), bytes, 31);
   }
 
   bool init() {

@@ -7,7 +7,7 @@
 
 class hyperxApp : public wxApp {
  public:
-  hyperxApp(bool);
+  hyperxApp(bool systray, bool debug);
   ~hyperxApp();
 
   virtual bool OnInit();
@@ -15,6 +15,7 @@ class hyperxApp : public wxApp {
  private:
   hyperxFrame* m_frame;
   bool systray;
+  bool debug;
 };
 
 #endif
