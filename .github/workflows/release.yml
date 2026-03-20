@@ -16,7 +16,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake build-essential libwxgtk3.2-dev libhidapi-dev
+          sudo apt-get install -y cmake build-essential libwxgtk3.2-dev libhidapi-dev libudev-dev
 
       - name: Configure
         run: cmake -S . -B build
