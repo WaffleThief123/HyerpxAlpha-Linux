@@ -2,8 +2,8 @@
 Type=Application
 Name=HyperX Cloud Alpha
 Comment=HyperX Cloud Alpha Wireless headset manager
-Exec=/opt/hyperx/Hyperx --systray
-Icon=/opt/hyperx/img/hyperx.png
+Exec=/usr/bin/Hyperx --systray
+Icon=/usr/share/hyperx/img/hyperx.png
 Terminal=false
 Categories=Audio;HardwareSettings;
 StartupNotify=false

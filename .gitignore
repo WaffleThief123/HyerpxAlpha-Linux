@@ -4,3 +4,7 @@ Debug/
 .cache/
 neovim.json
 bin/Hyperx
+pkg/
+src/hyperx-alpha-wireless-*/
+hyperx-alpha-wireless-*/
+*.pkg.tar.zst
